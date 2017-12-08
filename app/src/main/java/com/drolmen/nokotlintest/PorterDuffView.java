@@ -31,6 +31,11 @@ public class PorterDuffView extends View {
 
     private VelocityTracker mTracker ;
 
+    private Node mLastNode;
+
+    public static final int SENSITIVITY = 2;    //笔触灵敏度，每次绘制点间隔
+    public static final float MAX_VELOCITY = 124f;
+
     public PorterDuffView(Context context) {
         super(context);
         init();
@@ -57,6 +62,8 @@ public class PorterDuffView extends View {
         mPaint.setAlpha(255);
 
         mTracker = VelocityTracker.obtain();
+
+        mLastNode = new Node();
     }
 
     @Override
@@ -84,7 +91,10 @@ public class PorterDuffView extends View {
     }
 
     private void onDown(MotionEvent event) {
-//        mCacheCanvas.getCanvas().drawColor(Color.WHITE, PorterDuff.Mode.CLEAR);
+        mLastNode.x = event.getX();
+        mLastNode.y = event.getY();
+        mLastNode.percent = 1f;
+
         mTracker.addMovement(event);
         Bitmap bitmap = mBrushList.get(5).mBrushBitmap;
         drawBitmapToCache(bitmap,
@@ -95,9 +105,9 @@ public class PorterDuffView extends View {
 
     private void onMove(MotionEvent event) {
         mTracker.addMovement(event);
-        mTracker.computeCurrentVelocity(100, 124f);
+        mTracker.computeCurrentVelocity(100, MAX_VELOCITY);
         float v = (float) Math.hypot(mTracker.getXVelocity(), mTracker.getXVelocity());
-        drawBitmapToCache(4, (int) event.getX(), (int) event.getY(), 1 - computePercent(v));
+        drawBitmapToCache(getIndex(), (int) event.getX(), (int) event.getY(), 1 - computePercent(v));
         invalidate();
     }
 
@@ -110,10 +120,29 @@ public class PorterDuffView extends View {
     }
 
     private void drawBitmapToCache(int index, int centerX, int centerY, float percent) {
-        Log.d("------>", "drawBitmapToCache() called with: index = [" + index + "], centerX = [" + centerX + "], centerY = [" + centerY + "], percent = [" + percent + "]");
         Brush brush = mBrushList.get(index);
-        brush.move(centerX, centerY, percent);
-        brush.drawSelf(mCacheCanvas.getCanvas());
+
+        float x_distance = centerX - mLastNode.x;
+        float y_distance = centerY - mLastNode.y;
+        float v_distance = percent - mLastNode.percent;
+
+        //两点之间直线距离
+        float hypot = (float) Math.hypot(x_distance, y_distance);
+        //steps 等于需要绘制的次数
+        float steps = hypot / SENSITIVITY;
+
+        //计算每一步的变化量
+        float x_per_step = x_distance / steps;
+        float y_per_step = y_distance / steps;
+        float v_per_step = v_distance / steps;
+
+        for (int i = 0; i < steps; i++) {
+            mLastNode.x += x_per_step;
+            mLastNode.y += y_per_step;
+            mLastNode.percent += v_per_step;
+            brush.move((int) mLastNode.x, (int) mLastNode.y, mLastNode.percent);
+            brush.drawSelf(mCacheCanvas.getCanvas());
+        }
     }
 
     @Override
@@ -125,10 +154,18 @@ public class PorterDuffView extends View {
     }
 
     private float computePercent(float v) {
-        if (Math.abs(v) > 124) {
-            v = 124;
+        if (Math.abs(v) > MAX_VELOCITY) {
+            v = MAX_VELOCITY - 10;
         }
         return v / 124;
+    }
+
+    private int getIndex() {
+        int resuult = 0 ;
+
+        resuult = 4;
+
+        return resuult;
     }
 
 
@@ -165,7 +202,8 @@ public class PorterDuffView extends View {
         }
 
         public void move(int x, int y , float percent) {
-            mSrc.offsetTo(x - width, y - height);
+            Log.d("------>", "move() called with: x = [" + x + "], y = [" + y + "], percent = [" + percent + "]");
+            mSrc.offsetTo(x - width / 2, y - height / 2);
 
             int x_change = (int) ((1 - percent) * width);
             int y_change = (int) ((1 - percent) * height);
@@ -173,11 +211,21 @@ public class PorterDuffView extends View {
                     mSrc.right + x_change, mSrc.bottom + y_change);
         }
 
+        public void move(int x, int y) {
+            mDes.offset(x - width / 2 - mSrc.left, y - height / 2 - mSrc.top);
+            mSrc.offsetTo(x - width / 2, y - height / 2);
+        }
+
         public void drawSelf(Canvas canvas) {
             canvas.drawBitmap(mBrushBitmap, null, mDes, null);
         }
     }
 
+    public static class Node {
+        private float x;
+        private float y;
+        private float percent ; //宽百分比，使用该实行，要保证所有图片尺寸一致
+    }
 
     public void clear() {
         mCacheCanvas.getCanvas().drawColor(Color.WHITE, PorterDuff.Mode.CLEAR);
