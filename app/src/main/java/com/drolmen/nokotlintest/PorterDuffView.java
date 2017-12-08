@@ -50,7 +50,7 @@ public class PorterDuffView extends View {
     private void init() {
         mBrushList = new ArrayList<>();
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = 4;
+        options.inSampleSize = 8;
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._0, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._1, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._2, options)));
@@ -106,13 +106,25 @@ public class PorterDuffView extends View {
     private void onMove(MotionEvent event) {
         mTracker.addMovement(event);
         mTracker.computeCurrentVelocity(100, MAX_VELOCITY);
+
         float v = (float) Math.hypot(mTracker.getXVelocity(), mTracker.getXVelocity());
-        drawBitmapToCache(getIndex(), (int) event.getX(), (int) event.getY(), 1 - computePercent(v));
+        float percent = 1 - computePercent(v);
+
+        int x = (int) event.getX();
+        int y = (int) event.getY();
+        int index = getIndex(x - mLastNode.x, y - mLastNode.y);
+        Log.d("---------->", "index = " + index);
+        drawBitmapToCache(index, x, y, percent);
         invalidate();
     }
 
     private void onUp(MotionEvent event) {
         mTracker.clear();
+        Bitmap bitmap = mBrushList.get(5).mBrushBitmap;
+        drawBitmapToCache(bitmap,
+                event.getX() - bitmap.getWidth() / 2,
+                event.getY() - bitmap.getHeight() / 2);
+        invalidate();
     }
 
     private void drawBitmapToCache(Bitmap bitmap, float left, float top) {
@@ -160,13 +172,37 @@ public class PorterDuffView extends View {
         return v / 124;
     }
 
-    private int getIndex() {
-        int resuult = 0 ;
+    private int getIndex(float x_vector, float y_vector) {
+        int result = 0 ;
 
-        resuult = 4;
+        //求两个向量之间的夹角(x_vector, y_vector) (1,0)
+        double acos = Math.acos(x_vector / (Math.hypot(x_vector, y_vector))) / Math.PI * 180;
 
-        return resuult;
+        if (x_vector > 0 && y_vector > 0) { //第一象限
+            //不处理
+        } else if (x_vector < 0 && y_vector > 0) {  //第二象限
+            //也不处理
+        } else if (x_vector < 0 && y_vector < 0) {  //第三象限
+            acos = 360 - acos;
+        } else if (x_vector > 0 && y_vector < 0) {  //第四象限
+            acos = 360 - acos;
+        }
+
+        System.out.print("arc = " + acos + "    ");
+
+        if (acos <= 10 || acos >= 350 || (acos >= 170 && acos <= 190)) {    //左→右、右→左
+            result =  3;
+        } else if ((acos > 10 && acos < 80) || (acos > 100 && acos < 170)) { //左下→右上，右下→左上
+            result = 1;
+        } else if ((acos >= 80 && acos <= 100) || (acos >= 260 && acos <= 280)) { //上→下、下→上
+            result = 4 ;
+        } else if ((acos > 190 && acos < 260) || (acos > 280 && acos < 350)) {  //左上→右下 右上→左下
+            result = 3 ;
+        }
+
+        return result;
     }
+
 
 
     public static class CacheCanvas {
