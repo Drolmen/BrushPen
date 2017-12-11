@@ -107,7 +107,7 @@ public class PorterDuffView extends View {
         mTracker.addMovement(event);
         mTracker.computeCurrentVelocity(100, MAX_VELOCITY);
 
-        float v = (float) Math.hypot(mTracker.getXVelocity(), mTracker.getXVelocity());
+        float v = (float) Math.hypot(mTracker.getXVelocity(), mTracker.getYVelocity());
         float percent = 1 - computePercent(v);
 
         int x = (int) event.getX();
@@ -191,7 +191,7 @@ public class PorterDuffView extends View {
         System.out.print("arc = " + acos + "    ");
 
         if (acos <= 10 || acos >= 350 || (acos >= 170 && acos <= 190)) {    //左→右、右→左
-            result =  3;
+            result =  2;
         } else if ((acos > 10 && acos < 80) || (acos > 100 && acos < 170)) { //左下→右上，右下→左上
             result = 1;
         } else if ((acos >= 80 && acos <= 100) || (acos >= 260 && acos <= 280)) { //上→下、下→上
