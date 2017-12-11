@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
+import android.icu.text.LocaleDisplayNames;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -50,7 +51,7 @@ public class PorterDuffView extends View {
     private void init() {
         mBrushList = new ArrayList<>();
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = 8;
+        options.inSampleSize = 4;
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._0, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._1, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._2, options)));
@@ -91,9 +92,7 @@ public class PorterDuffView extends View {
     }
 
     private void onDown(MotionEvent event) {
-        mLastNode.x = event.getX();
-        mLastNode.y = event.getY();
-        mLastNode.percent = 1f;
+        mLastNode.set(event.getX(), event.getY(), 1f);
 
         mTracker.addMovement(event);
         Bitmap bitmap = mBrushList.get(5).mBrushBitmap;
@@ -105,7 +104,7 @@ public class PorterDuffView extends View {
 
     private void onMove(MotionEvent event) {
         mTracker.addMovement(event);
-        mTracker.computeCurrentVelocity(100, MAX_VELOCITY);
+        mTracker.computeCurrentVelocity(200, MAX_VELOCITY);
 
         float v = (float) Math.hypot(mTracker.getXVelocity(), mTracker.getYVelocity());
         float percent = 1 - computePercent(v);
@@ -113,7 +112,6 @@ public class PorterDuffView extends View {
         int x = (int) event.getX();
         int y = (int) event.getY();
         int index = getIndex(x - mLastNode.x, y - mLastNode.y);
-        Log.d("---------->", "index = " + index);
         drawBitmapToCache(index, x, y, percent);
         invalidate();
     }
@@ -136,25 +134,42 @@ public class PorterDuffView extends View {
 
         float x_distance = centerX - mLastNode.x;
         float y_distance = centerY - mLastNode.y;
-        float v_distance = percent - mLastNode.percent;
+        float percent_distance = percent - mLastNode.percent;
 
         //两点之间直线距离
         float hypot = (float) Math.hypot(x_distance, y_distance);
+//        if (hypot < SENSITIVITY) {
+//            mLastNode.x = centerX ;
+//            mLastNode.y = centerY;
+//            mLastNode.percent = percent;
+//            brush.move(centerX, centerY, percent);
+//            brush.drawSelf(mCacheCanvas.getCanvas());
+//            return;
+//        }
+
         //steps 等于需要绘制的次数
         float steps = hypot / SENSITIVITY;
 
         //计算每一步的变化量
         float x_per_step = x_distance / steps;
         float y_per_step = y_distance / steps;
-        float v_per_step = v_distance / steps;
+        float v_per_step = percent_distance / steps;
 
-        for (int i = 0; i < steps; i++) {
-            mLastNode.x += x_per_step;
-            mLastNode.y += y_per_step;
-            mLastNode.percent += v_per_step;
-            brush.move((int) mLastNode.x, (int) mLastNode.y, mLastNode.percent);
+        float beginX = mLastNode.x ;
+        float beginY = mLastNode.y ;
+        float beginPercent = mLastNode.percent;
+
+        do {
+            beginX += x_per_step;
+            beginY += y_per_step;
+            beginPercent += v_per_step;
+
+            brush.move((int) beginX, (int) beginY, beginPercent);
             brush.drawSelf(mCacheCanvas.getCanvas());
-        }
+            steps--;
+        } while (steps >= 0);
+
+        mLastNode.set(centerX, centerY, percent);
     }
 
     @Override
@@ -166,8 +181,10 @@ public class PorterDuffView extends View {
     }
 
     private float computePercent(float v) {
-        if (Math.abs(v) > MAX_VELOCITY) {
+        if (v > MAX_VELOCITY) {
             v = MAX_VELOCITY - 10;
+        } else if (v < MAX_VELOCITY / 2) {
+            v = MAX_VELOCITY / 2;
         }
         return v / 124;
     }
@@ -231,29 +248,25 @@ public class PorterDuffView extends View {
 
         public Brush(Bitmap brushBitmap) {
             mBrushBitmap = brushBitmap;
-            width = mBrushBitmap.getWidth();
-            height = mBrushBitmap.getHeight();
-            mSrc = new Rect(0, 0, brushBitmap.getWidth(), brushBitmap.getHeight());
-            mDes = new Rect(0, 0, brushBitmap.getWidth(), brushBitmap.getHeight());
+            width = mBrushBitmap.getWidth() / 2;
+            height = mBrushBitmap.getHeight() / 2;
+            mSrc = new Rect(0, 0, width, height);
+            mDes = new Rect(0, 0, width, height);
         }
 
         public void move(int x, int y , float percent) {
             Log.d("------>", "move() called with: x = [" + x + "], y = [" + y + "], percent = [" + percent + "]");
             mSrc.offsetTo(x - width / 2, y - height / 2);
 
-            int x_change = (int) ((1 - percent) * width);
-            int y_change = (int) ((1 - percent) * height);
-            mDes.set(mSrc.left - x_change, mSrc.top - y_change,
-                    mSrc.right + x_change, mSrc.bottom + y_change);
-        }
-
-        public void move(int x, int y) {
-            mDes.offset(x - width / 2 - mSrc.left, y - height / 2 - mSrc.top);
-            mSrc.offsetTo(x - width / 2, y - height / 2);
+            int x_change = (int) (percent * width) / 2;
+            int y_change = (int) (percent * height) / 2;
+            mDes.set(mSrc.left + x_change, mSrc.top + y_change,
+                    mSrc.right - x_change, mSrc.bottom - y_change);
         }
 
         public void drawSelf(Canvas canvas) {
             canvas.drawBitmap(mBrushBitmap, null, mDes, null);
+
         }
     }
 
@@ -261,6 +274,21 @@ public class PorterDuffView extends View {
         private float x;
         private float y;
         private float percent ; //宽百分比，使用该实行，要保证所有图片尺寸一致
+
+        public Node() {
+        }
+
+        public Node(float x, float y, float percent) {
+            this.x = x;
+            this.y = y;
+            this.percent = percent;
+        }
+
+        public void set(float x, float y, float percent) {
+            this.x = x;
+            this.y = y;
+            this.percent = percent;
+        }
     }
 
     public void clear() {
