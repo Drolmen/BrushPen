@@ -10,7 +10,6 @@ import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -91,16 +90,10 @@ public class PorterDuffView extends View {
     }
 
     private void onDown(MotionEvent event) {
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "  \r\n");;
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "onDown event: x = " + event.getX() + "y = " + event.getY());
         mLastNode.set(event.getX(), event.getY(), 0.8f, 0);
-        mLastNode.mBrush = mBrushList.get(5);
 
         BrushElement element = new BrushElement();
-        element.addNode(mLastNode);
+        element.addNode(mLastNode, 0);
 
         mElementArrays.add(element);
         // TODO: 2017/12/12  drolmen add --- 更新缓存
@@ -112,11 +105,6 @@ public class PorterDuffView extends View {
     }
 
     private void onMove(MotionEvent event) {
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "onMove event: x = " + event.getX() + "y = " + event.getY());
         int x = (int) event.getX();
         int y = (int) event.getY();
         int index = getIndex(x - mLastNode.x, y - mLastNode.y);
@@ -138,8 +126,6 @@ public class PorterDuffView extends View {
             currentPercent = BrushElement.calcNewPercent(curVel, mLastNode.level, curDis, 1.5,
                     mLastNode.percent);
             currentNode.percent = (float) currentPercent;
-            // TODO: 2017/12/12  drolmen add --- 贝塞尔曲线
-//            mBezier.init(mLastNode, curPoint);
         } else {
             //由于我们手机是触屏的手机，滑动的速度也不慢，所以，一般会走到这里来
             //阐明一点，当滑动的速度很快的时候，这个值就越小，越慢就越大，依靠着mlastWidth不断的变换
@@ -147,24 +133,17 @@ public class PorterDuffView extends View {
                     mLastNode.percent);
             currentNode.level = curVel;
             currentNode.percent = (float) currentPercent;
-            // TODO: 2017/12/12  drolmen add --- 贝塞尔曲线
-//            mBezier.addNode(curPoint);
         }
         //每次移动的话，这里赋值新的值
-        getLastElement().addNode(currentNode);
+        getLastElement().addNode(currentNode, curDis);
         mLastNode = currentNode;
-        getLastElement().drawLastNode(mCacheCanvas.getCanvas());
+        getLastElement().drawNode(mCacheCanvas.getCanvas());
         invalidate();
     }
 
     private void onUp(MotionEvent event) {
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "  \r\n");
         Node endNode = new Node();
         endNode.set(event.getX(), event.getY());
-        endNode.mBrush = mBrushList.get(5);
         endNode.percent = 0;
 
         double deltaX = event.getX() - mLastNode.x;
@@ -173,61 +152,11 @@ public class PorterDuffView extends View {
         //如果用笔画的画我的屏幕，记录他宽度的和压力值的乘，但是哇，这个是不会变的
         // TODO: 2017/12/12  drolmen add --- 这个值 0 还是其他 ？？？？
 
-        getLastElement().addNode(endNode);
+        getLastElement().addNode(endNode, curDis);
+        getLastElement().end();
 
         mLastNode = endNode;
-        getLastElement().drawLastNode(mCacheCanvas.getCanvas());
-        // TODO: 2017/12/12  drolmen add --- 绘制贝塞尔曲线，绘制笔锋
-    }
-
-    private void drawBitmapToCache(Bitmap bitmap, float left, float top) {
-        mCacheCanvas.getCanvas().drawBitmap(bitmap, left, top, mPaint);
-    }
-
-    private void drawBitmapToCache(int index, int centerX, int centerY,
-                                   float percent) {
-        Brush brush = mBrushList.get(index);
-
-        float x_distance = centerX - mLastNode.x;
-        float y_distance = centerY - mLastNode.y;
-
-        float percent_distance = percent - mLastNode.percent;
-
-        //两点之间直线距离
-        float hypot = (float) Math.hypot(x_distance, y_distance);
-        Log.d("PorterDuffView", "hypot:" + hypot);
-        if (hypot < SENSITIVITY) {
-            mLastNode.x = centerX ;
-            mLastNode.y = centerY;
-            mLastNode.percent = percent;
-            brush.move(centerX, centerY, percent);
-            brush.drawSelf(mCacheCanvas.getCanvas());
-            return;
-        }
-
-        //steps 等于需要绘制的次数
-        float steps = hypot / SENSITIVITY;
-
-        //计算每一步的变化量
-        float x_per_step = x_distance / steps;
-        float y_per_step = y_distance / steps;
-        float v_per_step = percent_distance / steps;
-
-        float beginX = mLastNode.x ;
-        float beginY = mLastNode.y ;
-        float beginPercent = mLastNode.percent;
-
-        do {
-            beginX += x_per_step;
-            beginY += y_per_step;
-            beginPercent += v_per_step;
-
-            brush.move((int) beginX, (int) beginY, beginPercent);
-            brush.drawSelf(mCacheCanvas.getCanvas());
-            steps--;
-        } while (steps >= 0);
-
-        mLastNode.set(centerX, centerY, percent);
+        getLastElement().drawNode(mCacheCanvas.getCanvas());
     }
 
     @Override
@@ -317,7 +246,6 @@ public class PorterDuffView extends View {
         }
 
         public void move(int x, int y , float percent) {
-            Log.d("------>", "move() called with: x = [" + x + "], y = [" + y + "], percent = [" + percent + "]");
             int half_width = (int) (percent * width / 2);
             int half_height = (int) (percent * height / 2);
             mDes.set(x - half_width, y - half_height,
@@ -329,7 +257,6 @@ public class PorterDuffView extends View {
         }
 
         public void drawSelf(Canvas canvas, Paint paint) {
-            Log.d("Brush----", "mDes:" + mDes);
             canvas.drawBitmap(mBrushBitmap, null, mDes, paint);
 //            canvas.drawRect(mDes,testPaint);
         }
@@ -370,11 +297,21 @@ public class PorterDuffView extends View {
             this.level = level;
         }
 
+        public void set(Node node) {
+            this.x = node.x;
+            this.y = node.y;
+            this.alpha = node.alpha;
+            this.level = node.level;
+            this.percent = node.percent;
+            this.mBrush = node.mBrush;
+        }
+
 
         @Override
         public String toString() {
             return "Node{" +
                     "x=" + x +
+                    ", y=" + y +
                     ", y=" + y +
                     ", level=" + level +
                     ", percent=" + percent +

@@ -1,9 +1,6 @@
 package com.drolmen.nokotlintest;
 
 import android.graphics.Canvas;
-import android.graphics.Paint;
-import android.graphics.Rect;
-import android.graphics.RectF;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -22,65 +19,60 @@ public class BrushElement {
     static int STEPFACTOR = 10;
 
     /**
-     * 需要绘制的点
+     * 需要绘制的原始的点
      */
     private ArrayList<PorterDuffView.Node> mNodeArrays ;
 
+    /**
+     * 需要绘制的贝塞尔曲线对应的点
+     */
+    private ArrayList<PorterDuffView.Node> mSmoothNodeArrays ;
+
+    private Bezier mBezierHelp ;    //用于绘制贝塞尔曲线，使线条平滑
 
     public BrushElement() {
         mNodeArrays = new ArrayList<>();
+        mSmoothNodeArrays = new ArrayList<>();
+        mBezierHelp = new Bezier();
     }
 
-    public void addNode(PorterDuffView.Node node) {
-        Log.d("BrushElement", "node:" + node);
+    public void addNode(PorterDuffView.Node node, double curs) {
+
         mNodeArrays.add(node);
+        if (size() == 2) {
+            mBezierHelp.init(mNodeArrays.get(size() - 2), mNodeArrays.get(size() - 1));
+            return;
+        }
+        mBezierHelp.addNode(node);
+        if (curs != 0) {
+            moveNeetToDo(curs, mNodeArrays.get(size() - 2).mBrush);
+        }
     }
 
-    /**
-     * 根据参数计算宽度
-     * @param maxWidth  最大宽度
-     * @param curVel    改值与两点之间距离成正比
-     * @param lastVel   同上，上一次level,可能为0
-     * @param curDis    两点之间的距离
-     * @param factor    一个参数，恒为1.5
-     * @param lastWidth 上一次计算的宽度
-     * @return
-     */
-    private static double calcNewWidth(float maxWidth, double curVel, double lastVel, double curDis,
-                               double factor, double lastWidth) {
-        double calVel = curVel * 0.6 + lastVel * (1 - 0.6);
-        //返回指定数字的自然对数
-        //手指滑动的越快，这个值越小，为负数
-        double vfac = Math.log(factor * 2.0f) * (-calVel);
-        //此方法返回值e，其中e是自然对数的基数。
-        //Math.exp(vfac) 变化范围为0 到1 当手指没有滑动的时候 这个值为1 当滑动很快的时候无线趋近于0
-        //在次说明下，当手指抬起来，这个值会变大，这也就说明，抬起手太慢的话，笔锋效果不太明显
-        //这就说明为什么笔锋的效果不太明显
-        double calWidth = maxWidth * Math.exp(vfac);
-        //滑动的速度越快的话，mMoveThres也越大
-        double mMoveThres = curDis * 0.01f;
-        //对之值最大的地方进行控制
-        if (mMoveThres > WIDTH_THRES_MAX) {
-            mMoveThres = WIDTH_THRES_MAX;
-        }
-        //滑动的越快的话，第一个判断会走
-        if (Math.abs(calWidth - maxWidth) / maxWidth > mMoveThres) {
+    public void end() {
+        mBezierHelp.end();
+    }
 
-            if (calWidth > maxWidth) {
-                calWidth = maxWidth * (1 + mMoveThres);
-            } else {
-                calWidth = maxWidth * (1 - mMoveThres);
-            }
-            //滑动的越慢的话，第二个判断会走
-        } else if (Math.abs(calWidth - lastWidth) / lastWidth > mMoveThres) {
-
-            if (calWidth > lastWidth) {
-                calWidth = lastWidth * (1 + mMoveThres);
-            } else {
-                calWidth = lastWidth * (1 - mMoveThres);
-            }
+    protected void moveNeetToDo(double curDis, PorterDuffView.Brush brush) {
+        int steps = 1 + (int) curDis / STEPFACTOR;
+        double step = 1.0 / steps;
+        for (double t = 0; t < 1.0; t += step) {
+            PorterDuffView.Node point = mBezierHelp.getPoint(t);
+            Log.d("BrushElement", "point:" + point);
+            getWithPointAlphaPoint(point);
+            point.mBrush = brush;
+            mSmoothNodeArrays.add(point);
         }
-        return calWidth;
+    }
+
+    private void getWithPointAlphaPoint(PorterDuffView.Node point) {
+        int alpha = (int) (255 * point.percent / 2);
+        if (alpha < 10) {
+            alpha = 10;
+        } else if (alpha > 255) {
+            alpha = 255;
+        }
+        point.alpha = alpha;
     }
 
 
@@ -153,9 +145,34 @@ public class BrushElement {
         drawLine(lastNode.mBrush, canvas, secondLastNode, lastNode);
     }
 
+    public void drawNode(Canvas canvas) {
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "  \r\n");;
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("------>", "drawNode() called with: canvas = [" + canvas + "]");
+        if (mSmoothNodeArrays.size() == 0) {
+            return;
+        }
+
+        PorterDuffView.Node lastNode = mSmoothNodeArrays.get(0);
+
+        if (size() == 1) {
+            lastNode.mBrush.move((int)lastNode.x, (int)lastNode.y, lastNode.percent);
+            lastNode.mBrush.drawSelf(canvas);
+            return;
+        }
+
+        for (int i = 1; i < mSmoothNodeArrays.size(); i++) {
+            PorterDuffView.Node point = mSmoothNodeArrays.get(i);
+            drawLine(lastNode.mBrush, canvas, lastNode, point);
+            lastNode = point;
+        }
+
+    }
+
     protected void drawLine(PorterDuffView.Brush brush, Canvas canvas, PorterDuffView.Node fromNode,
                             PorterDuffView.Node endNode) {
-
         float x_distance = -(fromNode.x - endNode.x);
         float y_distance = -(fromNode.y - endNode.y);
 
