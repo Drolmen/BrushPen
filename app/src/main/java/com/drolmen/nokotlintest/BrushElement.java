@@ -1,7 +1,7 @@
 package com.drolmen.nokotlintest;
 
 import android.graphics.Canvas;
-import android.util.Log;
+import android.graphics.Point;
 
 import java.util.ArrayList;
 
@@ -58,7 +58,6 @@ public class BrushElement {
         double step = 1.0 / steps;
         for (double t = 0; t < 1.0; t += step) {
             PorterDuffView.Node point = mBezierHelp.getPoint(t);
-            Log.d("BrushElement", "point:" + point);
             getWithPointAlphaPoint(point);
             point.mBrush = brush;
             mSmoothNodeArrays.add(point);
@@ -146,11 +145,6 @@ public class BrushElement {
     }
 
     public void drawNode(Canvas canvas) {
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("PorterDuffView", "  \r\n");;
-        Log.d("PorterDuffView", "  \r\n");
-        Log.d("------>", "drawNode() called with: canvas = [" + canvas + "]");
         if (mSmoothNodeArrays.size() == 0) {
             return;
         }
@@ -215,5 +209,8 @@ public class BrushElement {
         }
     }
 
+    public PorterDuffView.Node getLastNode() {
+        return mNodeArrays.get(mNodeArrays.size() - 1);
+    }
 
 }

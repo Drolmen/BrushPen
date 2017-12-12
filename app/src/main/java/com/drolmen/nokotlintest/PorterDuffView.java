@@ -10,7 +10,9 @@ import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.View;
 
 import java.util.ArrayList;
@@ -32,8 +34,9 @@ public class PorterDuffView extends View {
     
     private ArrayList<BrushElement> mElementArrays ;
     
-    public static final int SENSITIVITY = 2;    //笔触灵敏度，每次绘制点间隔
     public static final float MAX_VELOCITY = 124f;
+
+    private VelocityTracker mVelocityTracker = VelocityTracker.obtain();
 
     public PorterDuffView(Context context) {
         super(context);
@@ -75,6 +78,7 @@ public class PorterDuffView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        mVelocityTracker.addMovement(event);
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 onDown(event);
@@ -96,12 +100,7 @@ public class PorterDuffView extends View {
         element.addNode(mLastNode, 0);
 
         mElementArrays.add(element);
-        // TODO: 2017/12/12  drolmen add --- 更新缓存
-//        Bitmap bitmap = mBrushList.get(5).mBrushBitmap;
-//        drawBitmapToCache(bitmap,
-//                event.getX() - bitmap.getWidth() / 2,
-//                event.getY() - bitmap.getHeight() / 2);
-//        invalidate();
+        invalidate();
     }
 
     private void onMove(MotionEvent event) {
@@ -118,6 +117,9 @@ public class PorterDuffView extends View {
         //deltaX和deltay平方和的二次方根 想象一个例子 1+1的平方根为1.4 （x²+y²）开根号
         //同理，当滑动的越快的话，deltaX+deltaY的值越大，这个越大的话，curDis也越大
         double curDis = Math.hypot(deltaX, deltaY);
+
+        Log.d("PorterDuffView", "curDis:" + curDis);
+
         //我们求出的这个值越小，画的点或者是绘制椭圆形越多，这个值越大的话，绘制的越少，笔就越细，宽度越小
         double curVel = curDis * BrushElement.DIS_VEL_CAL_FACTOR;
         double currentPercent;
@@ -142,21 +144,34 @@ public class PorterDuffView extends View {
     }
 
     private void onUp(MotionEvent event) {
+
+        mVelocityTracker.computeCurrentVelocity(50);
+
+        //手指抬起一瞬间的速度
+        double v = Math.hypot(mVelocityTracker.getXVelocity(), mVelocityTracker.getYVelocity());
+        //由速度决定笔锋长度
         Node endNode = new Node();
+
+//        Node lastNode = getLastElement().getLastNode();
+//        float endX = (event.getX() - lastNode.x) * 2 + lastNode.x;
+//        float endY = (event.getY() - lastNode.y) * 2 + lastNode.y;
+//        endNode.set(endX, endY);
         endNode.set(event.getX(), event.getY());
-        endNode.percent = 0;
+        endNode.percent = 0.1f;
 
         double deltaX = event.getX() - mLastNode.x;
         double deltaY = event.getY() - mLastNode.y;
         double curDis = Math.hypot(deltaX, deltaY);
+        Log.d("PorterDuffView_for_v", "v:" + v + "   curDis = " + curDis);
         //如果用笔画的画我的屏幕，记录他宽度的和压力值的乘，但是哇，这个是不会变的
         // TODO: 2017/12/12  drolmen add --- 这个值 0 还是其他 ？？？？
 
-        getLastElement().addNode(endNode, curDis);
+        getLastElement().addNode(endNode, v*10);
         getLastElement().end();
 
         mLastNode = endNode;
         getLastElement().drawNode(mCacheCanvas.getCanvas());
+        invalidate();
     }
 
     @Override
@@ -192,14 +207,18 @@ public class PorterDuffView extends View {
 
         System.out.print("arc = " + acos + "    ");
 
-        if (acos <= 10 || acos >= 350 || (acos >= 170 && acos <= 190)) {    //左→右、右→左
-            result =  2;
-        } else if ((acos > 10 && acos < 80) || (acos > 100 && acos < 170)) { //左下→右上，右下→左上
-            result = 1;
-        } else if ((acos >= 80 && acos <= 100) || (acos >= 260 && acos <= 280)) { //上→下、下→上
-            result = 4 ;
-        } else if ((acos > 190 && acos < 260) || (acos > 280 && acos < 350)) {  //左上→右下 右上→左下
-            result = 3 ;
+        int angle = 30;
+
+        if (acos <= angle || acos >= 360 - angle || (acos >= 180 - angle && acos <= 180 + angle)) {    //左→右、右→左
+            result = 2;
+        } else {
+            if ((acos > angle && acos < 90 - angle) || (acos > 90 + angle && acos < 180 - angle)) { //左下→右上，右下→左上
+                result = 1;
+            } else if ((acos >= 90 - angle && acos <= 90 + angle) || (acos >= 270 - angle && acos <= 270 + angle)) { //上→下、下→上
+                result = 4;
+            } else if ((acos > 180 + angle && acos < 270 - angle) || (acos > 270 + angle && acos < 360 - angle)) {  //左上→右下 右上→左下
+                result = 3;
+            }
         }
 
         return result;
