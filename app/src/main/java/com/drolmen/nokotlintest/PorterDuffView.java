@@ -8,12 +8,10 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
-import android.icu.text.LocaleDisplayNames;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
-import android.view.VelocityTracker;
 import android.view.View;
 
 import java.util.ArrayList;
@@ -30,10 +28,11 @@ public class PorterDuffView extends View {
 
     private Paint mPaint ;
 
-    private VelocityTracker mTracker ;
-
     private Node mLastNode;
-
+    
+    
+    private ArrayList<BrushElement> mElementArrays ;
+    
     public static final int SENSITIVITY = 2;    //笔触灵敏度，每次绘制点间隔
     public static final float MAX_VELOCITY = 124f;
 
@@ -59,10 +58,10 @@ public class PorterDuffView extends View {
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._4, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._5, options)));
 
+        mElementArrays = new ArrayList<>();
+        
         mPaint = new Paint();
         mPaint.setAlpha(255);
-
-        mTracker = VelocityTracker.obtain();
 
         mLastNode = new Node();
     }
@@ -92,60 +91,119 @@ public class PorterDuffView extends View {
     }
 
     private void onDown(MotionEvent event) {
-        mLastNode.set(event.getX(), event.getY(), 1f);
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "  \r\n");;
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "onDown event: x = " + event.getX() + "y = " + event.getY());
+        mLastNode.set(event.getX(), event.getY(), 0.8f, 0);
+        mLastNode.mBrush = mBrushList.get(5);
 
-        mTracker.addMovement(event);
-        Bitmap bitmap = mBrushList.get(5).mBrushBitmap;
-        drawBitmapToCache(bitmap,
-                event.getX() - bitmap.getWidth() / 2,
-                event.getY() - bitmap.getHeight() / 2);
-        invalidate();
+        BrushElement element = new BrushElement();
+        element.addNode(mLastNode);
+
+        mElementArrays.add(element);
+        // TODO: 2017/12/12  drolmen add --- 更新缓存
+//        Bitmap bitmap = mBrushList.get(5).mBrushBitmap;
+//        drawBitmapToCache(bitmap,
+//                event.getX() - bitmap.getWidth() / 2,
+//                event.getY() - bitmap.getHeight() / 2);
+//        invalidate();
     }
 
     private void onMove(MotionEvent event) {
-        mTracker.addMovement(event);
-        mTracker.computeCurrentVelocity(200, MAX_VELOCITY);
-
-        float v = (float) Math.hypot(mTracker.getXVelocity(), mTracker.getYVelocity());
-        float percent = 1 - computePercent(v);
-
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "onMove event: x = " + event.getX() + "y = " + event.getY());
         int x = (int) event.getX();
         int y = (int) event.getY();
         int index = getIndex(x - mLastNode.x, y - mLastNode.y);
-        drawBitmapToCache(index, x, y, percent);
+
+        Node currentNode = new Node();
+        currentNode.mBrush = mBrushList.get(index);
+        currentNode.set(x, y);
+
+        double deltaX = x - mLastNode.x;
+        double deltaY = y - mLastNode.y;
+        //deltaX和deltay平方和的二次方根 想象一个例子 1+1的平方根为1.4 （x²+y²）开根号
+        //同理，当滑动的越快的话，deltaX+deltaY的值越大，这个越大的话，curDis也越大
+        double curDis = Math.hypot(deltaX, deltaY);
+        //我们求出的这个值越小，画的点或者是绘制椭圆形越多，这个值越大的话，绘制的越少，笔就越细，宽度越小
+        double curVel = curDis * BrushElement.DIS_VEL_CAL_FACTOR;
+        double currentPercent;
+        //点的集合少，我们得必须改变宽度,每次点击的down的时候，这个事件
+        if (getLastElement().size() < 2) {
+            currentPercent = BrushElement.calcNewPercent(curVel, mLastNode.level, curDis, 1.5,
+                    mLastNode.percent);
+            currentNode.percent = (float) currentPercent;
+            // TODO: 2017/12/12  drolmen add --- 贝塞尔曲线
+//            mBezier.init(mLastNode, curPoint);
+        } else {
+            //由于我们手机是触屏的手机，滑动的速度也不慢，所以，一般会走到这里来
+            //阐明一点，当滑动的速度很快的时候，这个值就越小，越慢就越大，依靠着mlastWidth不断的变换
+            currentPercent = BrushElement.calcNewPercent(curVel, mLastNode.level, curDis, 1.5,
+                    mLastNode.percent);
+            currentNode.level = curVel;
+            currentNode.percent = (float) currentPercent;
+            // TODO: 2017/12/12  drolmen add --- 贝塞尔曲线
+//            mBezier.addNode(curPoint);
+        }
+        //每次移动的话，这里赋值新的值
+        getLastElement().addNode(currentNode);
+        mLastNode = currentNode;
+        getLastElement().drawLastNode(mCacheCanvas.getCanvas());
         invalidate();
     }
 
     private void onUp(MotionEvent event) {
-        mTracker.clear();
-        Bitmap bitmap = mBrushList.get(5).mBrushBitmap;
-        drawBitmapToCache(bitmap,
-                event.getX() - bitmap.getWidth() / 2,
-                event.getY() - bitmap.getHeight() / 2);
-        invalidate();
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "  \r\n");
+        Log.d("PorterDuffView", "  \r\n");
+        Node endNode = new Node();
+        endNode.set(event.getX(), event.getY());
+        endNode.mBrush = mBrushList.get(5);
+        endNode.percent = 0;
+
+        double deltaX = event.getX() - mLastNode.x;
+        double deltaY = event.getY() - mLastNode.y;
+        double curDis = Math.hypot(deltaX, deltaY);
+        //如果用笔画的画我的屏幕，记录他宽度的和压力值的乘，但是哇，这个是不会变的
+        // TODO: 2017/12/12  drolmen add --- 这个值 0 还是其他 ？？？？
+
+        getLastElement().addNode(endNode);
+
+        mLastNode = endNode;
+        getLastElement().drawLastNode(mCacheCanvas.getCanvas());
+        // TODO: 2017/12/12  drolmen add --- 绘制贝塞尔曲线，绘制笔锋
     }
 
     private void drawBitmapToCache(Bitmap bitmap, float left, float top) {
         mCacheCanvas.getCanvas().drawBitmap(bitmap, left, top, mPaint);
     }
 
-    private void drawBitmapToCache(int index, int centerX, int centerY, float percent) {
+    private void drawBitmapToCache(int index, int centerX, int centerY,
+                                   float percent) {
         Brush brush = mBrushList.get(index);
 
         float x_distance = centerX - mLastNode.x;
         float y_distance = centerY - mLastNode.y;
+
         float percent_distance = percent - mLastNode.percent;
 
         //两点之间直线距离
         float hypot = (float) Math.hypot(x_distance, y_distance);
-//        if (hypot < SENSITIVITY) {
-//            mLastNode.x = centerX ;
-//            mLastNode.y = centerY;
-//            mLastNode.percent = percent;
-//            brush.move(centerX, centerY, percent);
-//            brush.drawSelf(mCacheCanvas.getCanvas());
-//            return;
-//        }
+        Log.d("PorterDuffView", "hypot:" + hypot);
+        if (hypot < SENSITIVITY) {
+            mLastNode.x = centerX ;
+            mLastNode.y = centerY;
+            mLastNode.percent = percent;
+            brush.move(centerX, centerY, percent);
+            brush.drawSelf(mCacheCanvas.getCanvas());
+            return;
+        }
 
         //steps 等于需要绘制的次数
         float steps = hypot / SENSITIVITY;
@@ -183,8 +241,6 @@ public class PorterDuffView extends View {
     private float computePercent(float v) {
         if (v > MAX_VELOCITY) {
             v = MAX_VELOCITY - 10;
-        } else if (v < MAX_VELOCITY / 2) {
-            v = MAX_VELOCITY / 2;
         }
         return v / 124;
     }
@@ -246,6 +302,12 @@ public class PorterDuffView extends View {
         private int width ;
         private int height ;
 
+        public static final Paint testPaint = new Paint();
+        {
+            testPaint.setColor(Color.BLACK);
+            testPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        }
+
         public Brush(Bitmap brushBitmap) {
             mBrushBitmap = brushBitmap;
             width = mBrushBitmap.getWidth() / 2;
@@ -256,26 +318,37 @@ public class PorterDuffView extends View {
 
         public void move(int x, int y , float percent) {
             Log.d("------>", "move() called with: x = [" + x + "], y = [" + y + "], percent = [" + percent + "]");
-            mSrc.offsetTo(x - width / 2, y - height / 2);
-
-            int x_change = (int) (percent * width) / 2;
-            int y_change = (int) (percent * height) / 2;
-            mDes.set(mSrc.left + x_change, mSrc.top + y_change,
-                    mSrc.right - x_change, mSrc.bottom - y_change);
+            int half_width = (int) (percent * width / 2);
+            int half_height = (int) (percent * height / 2);
+            mDes.set(x - half_width, y - half_height,
+                    x + half_width, y + half_height);
         }
 
         public void drawSelf(Canvas canvas) {
             canvas.drawBitmap(mBrushBitmap, null, mDes, null);
+        }
 
+        public void drawSelf(Canvas canvas, Paint paint) {
+            Log.d("Brush----", "mDes:" + mDes);
+            canvas.drawBitmap(mBrushBitmap, null, mDes, paint);
+//            canvas.drawRect(mDes,testPaint);
         }
     }
 
     public static class Node {
-        private float x;
-        private float y;
-        private float percent ; //宽百分比，使用该实行，要保证所有图片尺寸一致
+        protected Brush mBrush ;
+        protected float x;
+        protected float y;
+        protected int alpha = 255;
+        protected double level ;  // TODO: 2017/12/12  drolmen add --- 这个属性的位置要考虑一下
+        protected float percent ; //宽百分比，使用该实行，要保证所有图片尺寸一致
 
         public Node() {
+        }
+
+        public void set(float x, float y) {
+            this.x = x;
+            this.y = y;
         }
 
         public Node(float x, float y, float percent) {
@@ -289,9 +362,34 @@ public class PorterDuffView extends View {
             this.y = y;
             this.percent = percent;
         }
+
+        public void set(float x, float y, float percent,double level) {
+            this.x = x;
+            this.y = y;
+            this.percent = percent;
+            this.level = level;
+        }
+
+
+        @Override
+        public String toString() {
+            return "Node{" +
+                    "x=" + x +
+                    ", y=" + y +
+                    ", level=" + level +
+                    ", percent=" + percent +
+                    '}';
+        }
     }
 
     public void clear() {
+        mElementArrays.clear();
         mCacheCanvas.getCanvas().drawColor(Color.WHITE, PorterDuff.Mode.CLEAR);
+        invalidate();
+    }
+
+
+    public BrushElement getLastElement() {
+        return mElementArrays.get(mElementArrays.size() - 1);
     }
 }
