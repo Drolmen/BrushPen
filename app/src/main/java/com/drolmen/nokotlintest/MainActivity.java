@@ -45,4 +45,18 @@ public class MainActivity extends AppCompatActivity {
                 break;
         }
     }
+
+    public void onStrokeAdjsut(View view) {
+        switch (view.getId()) {
+            case R.id.stroke1:
+                mPorterDuffView.setStroke(0);
+                break;
+            case R.id.stroke2:
+                mPorterDuffView.setStroke(1);
+                break;
+            case R.id.stroke3:
+                mPorterDuffView.setStroke(2);
+                break;
+        }
+    }
 }

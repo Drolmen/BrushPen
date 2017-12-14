@@ -25,6 +25,7 @@ import java.util.ArrayList;
 public class PorterDuffView extends View {
 
     private ArrayList<Brush> mBrushList;
+    private ArrayList<Brush> mLevelList ;
     private Brush mSingleBrush ;
 
     private CacheCanvas mCacheCanvas ;
@@ -41,7 +42,7 @@ public class PorterDuffView extends View {
 
     public static boolean useAlpha = false;
 
-    public static Color sCurrentColor ;
+    public static int sCurrentColor ;
 
     public PorterDuffView(Context context) {
         super(context);
@@ -66,11 +67,17 @@ public class PorterDuffView extends View {
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._5, options)));
 
         options.inMutable = true;
-        mSingleBrush = new Brush(BitmapFactory.decodeResource(getResources(),
-                R.mipmap.new_brush_no_left_board, options));
+        mLevelList = new ArrayList<>();
+        mLevelList.add(new Brush(BitmapFactory.decodeResource(getResources(),
+                R.mipmap.level_0, options)));
+        mLevelList.add(new Brush(BitmapFactory.decodeResource(getResources(),
+                R.mipmap.level_1, options)));
+        mLevelList.add(new Brush(BitmapFactory.decodeResource(getResources(),
+                R.mipmap.level_2, options)));
+        mSingleBrush = mLevelList.get(0);
 
         mElementArrays = new ArrayList<>();
-        
+
         mPaint = new Paint();
         mPaint.setAlpha(255);
 
@@ -231,8 +238,15 @@ public class PorterDuffView extends View {
     }
 
     public void setColor(int color) {
+        sCurrentColor = color;
         Canvas canvas = new Canvas(mSingleBrush.mBrushBitmap);
         canvas.drawColor(color,PorterDuff.Mode.SRC_IN);
+    }
+
+    public void setStroke(int level) {
+        // 0 1 2
+        mSingleBrush = mLevelList.get(level);
+        setColor(Color.BLACK);
     }
 
 
