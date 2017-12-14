@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
@@ -30,13 +31,14 @@ public class PorterDuffView extends View {
     private Paint mPaint ;
 
     private Node mLastNode;
-    
-    
+
     private ArrayList<BrushElement> mElementArrays ;
     
     public static final float MAX_VELOCITY = 124f;
 
     private VelocityTracker mVelocityTracker = VelocityTracker.obtain();
+
+    public static boolean useAlpha = false;
 
     public PorterDuffView(Context context) {
         super(context);
@@ -52,13 +54,18 @@ public class PorterDuffView extends View {
     private void init() {
         mBrushList = new ArrayList<>();
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = 4;
+        options.inSampleSize = 8;
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._0, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._1, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._2, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._3, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._4, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._5, options)));
+
+        mBrushList.clear();
+        for (int i = 0; i < 5; i++) {
+            mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap.new_brush,options)));
+        }
 
         mElementArrays = new ArrayList<>();
         
@@ -96,7 +103,7 @@ public class PorterDuffView extends View {
     private void onDown(MotionEvent event) {
         mLastNode.set(event.getX(), event.getY(), 0.8f, 0);
 
-        BrushElement element = new BrushElement();
+        BrushElement element = new BrushElement(useAlpha);
         element.addNode(mLastNode, 0);
 
         mElementArrays.add(element);
@@ -224,6 +231,9 @@ public class PorterDuffView extends View {
         return result;
     }
 
+    public void setOrCancleAlpha() {
+        useAlpha = !useAlpha;
+    }
 
 
     public static class CacheCanvas {

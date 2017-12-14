@@ -30,10 +30,13 @@ public class BrushElement {
 
     private Bezier mBezierHelp ;    //用于绘制贝塞尔曲线，使线条平滑
 
-    public BrushElement() {
+    private boolean needAlpha ;
+
+    public BrushElement(boolean needAlpha) {
         mNodeArrays = new ArrayList<>();
         mSmoothNodeArrays = new ArrayList<>();
         mBezierHelp = new Bezier();
+        this.needAlpha = needAlpha;
     }
 
     public void addNode(PorterDuffView.Node node, double curs) {
@@ -198,10 +201,13 @@ public class BrushElement {
             //这里new 新的笔  我放到外面去做了
             //Paint newPaint = new Paint(paint);
             //当这里很小的时候，透明度就会很小，个人测试在3.0左右比较靠谱
-            // TODO: 2017/12/12  drolmen add --- alpha值
-//            paint.setAlpha((int) (a / 3.0f));
             //第一个Rect 代表要绘制的bitmap 区域，第二个 Rect 代表的是要将bitmap 绘制在屏幕的什么地方
-            brush.drawSelf(canvas, null);
+            if (needAlpha) {
+                PorterDuffView.Brush.testPaint.setAlpha(a);
+                brush.drawSelf(canvas, PorterDuffView.Brush.testPaint);
+            } else {
+                brush.drawSelf(canvas);
+            }
             x += deltaX;
             y += deltaY;
             fromPercent += deltaW;
