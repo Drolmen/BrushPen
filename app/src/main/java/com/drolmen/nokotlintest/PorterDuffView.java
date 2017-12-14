@@ -41,6 +41,8 @@ public class PorterDuffView extends View {
 
     public static boolean useAlpha = false;
 
+    public static Color sCurrentColor ;
+
     public PorterDuffView(Context context) {
         super(context);
         init();
@@ -63,6 +65,7 @@ public class PorterDuffView extends View {
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._4, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._5, options)));
 
+        options.inMutable = true;
         mSingleBrush = new Brush(BitmapFactory.decodeResource(getResources(),
                 R.mipmap.new_brush_no_left_board, options));
 
@@ -225,6 +228,11 @@ public class PorterDuffView extends View {
 
     public void setOrCancleAlpha() {
         useAlpha = !useAlpha;
+    }
+
+    public void setColor(int color) {
+        Canvas canvas = new Canvas(mSingleBrush.mBrushBitmap);
+        canvas.drawColor(color,PorterDuff.Mode.SRC_IN);
     }
 
 
