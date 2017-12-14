@@ -52,8 +52,20 @@ public class BrushElement {
         }
     }
 
-    public void end() {
+    public void addEndNode(PorterDuffView.Node node, double curs) {
+        mNodeArrays.add(node);
+        if (size() == 2) {
+            mBezierHelp.init(mNodeArrays.get(size() - 2), mNodeArrays.get(size() - 1));
+            return;
+        }
+        mBezierHelp.addNode(node);
+        if (curs != 0) {
+            moveNeetToDo(curs, mNodeArrays.get(size() - 2).mBrush);
+        }
         mBezierHelp.end();
+        if (curs != 0) {
+            moveNeetToDo(curs, mNodeArrays.get(size() - 2).mBrush);
+        }
     }
 
     protected void moveNeetToDo(double curDis, PorterDuffView.Brush brush) {

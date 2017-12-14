@@ -25,6 +25,7 @@ import java.util.ArrayList;
 public class PorterDuffView extends View {
 
     private ArrayList<Brush> mBrushList;
+    private Brush mSingleBrush ;
 
     private CacheCanvas mCacheCanvas ;
 
@@ -62,10 +63,8 @@ public class PorterDuffView extends View {
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._4, options)));
         mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._5, options)));
 
-        mBrushList.clear();
-        for (int i = 0; i < 5; i++) {
-            mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap.new_brush,options)));
-        }
+        mSingleBrush = new Brush(BitmapFactory.decodeResource(getResources(),
+                R.mipmap.new_brush_no_left_board, options));
 
         mElementArrays = new ArrayList<>();
         
@@ -113,10 +112,9 @@ public class PorterDuffView extends View {
     private void onMove(MotionEvent event) {
         int x = (int) event.getX();
         int y = (int) event.getY();
-        int index = getIndex(x - mLastNode.x, y - mLastNode.y);
 
         Node currentNode = new Node();
-        currentNode.mBrush = mBrushList.get(index);
+        currentNode.mBrush = mSingleBrush;
         currentNode.set(x, y);
 
         double deltaX = x - mLastNode.x;
@@ -158,11 +156,6 @@ public class PorterDuffView extends View {
         double v = Math.hypot(mVelocityTracker.getXVelocity(), mVelocityTracker.getYVelocity());
         //由速度决定笔锋长度
         Node endNode = new Node();
-
-//        Node lastNode = getLastElement().getLastNode();
-//        float endX = (event.getX() - lastNode.x) * 2 + lastNode.x;
-//        float endY = (event.getY() - lastNode.y) * 2 + lastNode.y;
-//        endNode.set(endX, endY);
         endNode.set(event.getX(), event.getY());
         endNode.percent = 0.1f;
 
@@ -173,8 +166,7 @@ public class PorterDuffView extends View {
         //如果用笔画的画我的屏幕，记录他宽度的和压力值的乘，但是哇，这个是不会变的
         // TODO: 2017/12/12  drolmen add --- 这个值 0 还是其他 ？？？？
 
-        getLastElement().addNode(endNode, v*10);
-        getLastElement().end();
+        getLastElement().addNode(endNode, curDis);
 
         mLastNode = endNode;
         getLastElement().drawNode(mCacheCanvas.getCanvas());
@@ -335,13 +327,12 @@ public class PorterDuffView extends View {
             this.mBrush = node.mBrush;
         }
 
-
         @Override
         public String toString() {
             return "Node{" +
                     "x=" + x +
                     ", y=" + y +
-                    ", y=" + y +
+                    ", alpha=" + alpha +
                     ", level=" + level +
                     ", percent=" + percent +
                     '}';
