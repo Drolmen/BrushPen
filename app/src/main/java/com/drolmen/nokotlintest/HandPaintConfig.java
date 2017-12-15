@@ -10,15 +10,15 @@ public class HandPaintConfig {
     /**
      * 钢笔笔触是否开启透明度变化
      */
-    static boolean enableBrushAlpha = true;
+    static boolean enableBrushAlpha = false;
 
     /**
      * 当前画笔颜色
      */
-    static int currentColor = Color.WHITE;
+    static int currentColor = Color.BLACK;
 
     /**
      * 当前画笔粗细等级
      */
-    static int currentLevel = 3 ;
+    static int currentLevel = 0 ;
 }

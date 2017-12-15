@@ -1,9 +1,12 @@
 package com.drolmen.nokotlintest;
 
+import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
 import android.graphics.Rect;
 
 import java.util.ArrayList;
@@ -13,6 +16,9 @@ import java.util.ArrayList;
  */
 
 public class BrushElement {
+
+
+    static ArrayList<BrushElement.Brush> mLevelList ;
 
     /**
      * 这个控制笔锋的控制值
@@ -47,13 +53,45 @@ public class BrushElement {
      */
     private boolean mAlphaEnable;
 
-    private BrushElement.Node mLastNode;
+    /**
+     * 该笔的颜色
+     */
+    private int color;
 
+    /**
+     * 该笔的粗细等级
+     */
+    private int level;
+
+    private Brush mBrush ;
+
+    public static void init(Resources resources) {
+
+        if (mLevelList != null) {
+            return;
+        }
+
+        mLevelList = new ArrayList<>();
+
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inSampleSize = 2;
+        options.inMutable = true;
+        mLevelList.add(new BrushElement.Brush(BitmapFactory.decodeResource(resources,
+                R.mipmap.level_0, options)));
+        mLevelList.add(new BrushElement.Brush(BitmapFactory.decodeResource(resources,
+                R.mipmap.level_1, options)));
+        mLevelList.add(new BrushElement.Brush(BitmapFactory.decodeResource(resources,
+                R.mipmap.level_2, options)));
+    }
+    
     public BrushElement() {
         mNodeArrays = new ArrayList<>();
         mSmoothNodeArrays = new ArrayList<>();
         mBezierHelp = new Bezier();
         this.mAlphaEnable = HandPaintConfig.enableBrushAlpha;
+        this.level = HandPaintConfig.currentLevel;
+        this.color = HandPaintConfig.currentColor;
+        mBrush = mLevelList.get(this.level);
     }
 
     public void addNode(Node node, double curs) {
@@ -65,17 +103,16 @@ public class BrushElement {
         }
         mBezierHelp.addNode(node);
         if (curs != 0) {
-            moveNeetToDo(curs, mNodeArrays.get(size() - 2).mBrush);
+            moveNeetToDo(curs);
         }
     }
 
-    protected void moveNeetToDo(double curDis, Brush brush) {
+    protected void moveNeetToDo(double curDis) {
         int steps = 1 + (int) curDis / STEPFACTOR;
         double step = 1.0 / steps;
         for (double t = 0; t < 1.0; t += step) {
             Node point = mBezierHelp.getPoint(t);
             getWithPointAlphaPoint(point);
-            point.mBrush = brush;
             mSmoothNodeArrays.add(point);
         }
     }
@@ -137,25 +174,24 @@ public class BrushElement {
         if (mSmoothNodeArrays.size() == 0) {
             return;
         }
-
+        checkBrushColor();
         Node lastNode = mSmoothNodeArrays.get(0);
 
         if (size() == 1) {
-            lastNode.mBrush.move((int)lastNode.x, (int)lastNode.y, lastNode.percent);
-            lastNode.mBrush.drawSelf(canvas);
+            mBrush.move((int)lastNode.x, (int)lastNode.y, lastNode.percent);
+            mBrush.drawSelf(canvas);
             return;
         }
 
         for (int i = 1; i < mSmoothNodeArrays.size(); i++) {
             Node point = mSmoothNodeArrays.get(i);
-            drawLine(lastNode.mBrush, canvas, lastNode, point);
+            drawLine(mBrush, canvas, lastNode, point);
             lastNode = point;
         }
 
     }
 
-    protected void drawLine(Brush brush, Canvas canvas, Node fromNode,
-                            Node endNode) {
+    protected void drawLine(Brush brush, Canvas canvas, Node fromNode, Node endNode) {
         float x_distance = -(fromNode.x - endNode.x);
         float y_distance = -(fromNode.y - endNode.y);
 
@@ -200,12 +236,20 @@ public class BrushElement {
         }
     }
 
+    private void checkBrushColor() {
+        Canvas canvas = new Canvas(mBrush.mBrushBitmap);
+        canvas.drawColor(color,PorterDuff.Mode.SRC_IN);
+    }
+
     public Node getLastNode() {
         return mNodeArrays.get(mNodeArrays.size() - 1);
     }
 
+    public Brush getBrush() {
+        return mBrush;
+    }
+
     public static class Node {
-        protected Brush mBrush ;
         protected float x;
         protected float y;
         protected int alpha = 255;
@@ -239,7 +283,6 @@ public class BrushElement {
             this.alpha = node.alpha;
             this.level = node.level;
             this.percent = node.percent;
-            this.mBrush = node.mBrush;
         }
 
         @Override

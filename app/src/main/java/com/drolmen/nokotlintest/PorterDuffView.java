@@ -2,7 +2,6 @@ package com.drolmen.nokotlintest;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
@@ -20,9 +19,6 @@ import java.util.ArrayList;
 
 public class PorterDuffView extends View {
 
-    private static ArrayList<BrushElement.Brush> mLevelList ;
-    private BrushElement.Brush mCurrentBrush;
-
     private CacheCanvas mCacheCanvas ;
 
     private ArrayList<BrushElement> mElementArrays ;
@@ -30,8 +26,6 @@ public class PorterDuffView extends View {
     private SparseArray<BrushElement> mActivePath;
 
     public static final float MAX_VELOCITY = 124f;
-
-    public static boolean useAlpha = false;
 
     public PorterDuffView(Context context) {
         super(context);
@@ -45,20 +39,9 @@ public class PorterDuffView extends View {
 
 
     private void init() {
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = 2;
-        options.inMutable = true;
-        mLevelList = new ArrayList<>();
-        mLevelList.add(new BrushElement.Brush(BitmapFactory.decodeResource(getResources(),
-                R.mipmap.level_0, options)));
-        mLevelList.add(new BrushElement.Brush(BitmapFactory.decodeResource(getResources(),
-                R.mipmap.level_1, options)));
-        mLevelList.add(new BrushElement.Brush(BitmapFactory.decodeResource(getResources(),
-                R.mipmap.level_2, options)));
-        mCurrentBrush = mLevelList.get(0);
-
         mElementArrays = new ArrayList<>();
         mActivePath = new SparseArray<>();
+        BrushElement.init(getResources());
     }
 
     @Override
@@ -116,7 +99,6 @@ public class PorterDuffView extends View {
             int y = (int) event.getY(i);
 
             BrushElement.Node newMoveNode = new BrushElement.Node();
-            newMoveNode.mBrush = mCurrentBrush;
             newMoveNode.set(x, y);
 
             double deltaX = x - lastNode.x;
@@ -145,8 +127,6 @@ public class PorterDuffView extends View {
             element.addNode(newMoveNode, curDis);
             element.drawNode(mCacheCanvas.getCanvas());
         }
-
-
         invalidate();
     }
 
@@ -183,10 +163,6 @@ public class PorterDuffView extends View {
         if (mCacheCanvas != null) {
             mCacheCanvas.draw(canvas);
         }
-    }
-
-    private BrushElement.Node getLastNodeOfElement(int elementIndex) {
-        return mElementArrays.get(elementIndex).getLastNode();
     }
 
     private float computePercent(float v) {
@@ -232,19 +208,16 @@ public class PorterDuffView extends View {
     }
 
     public void setOrCancleAlpha() {
-        useAlpha = !useAlpha;
+        HandPaintConfig.enableBrushAlpha = !HandPaintConfig.enableBrushAlpha;
     }
 
     public void setColor(int color) {
         HandPaintConfig.currentColor = color;
-        Canvas canvas = new Canvas(mCurrentBrush.mBrushBitmap);
-        canvas.drawColor(color,PorterDuff.Mode.SRC_IN);
     }
 
     public void setStroke(int level) {
         // 0 1 2
-        mCurrentBrush = mLevelList.get(level);
-        setColor(Color.BLACK);
+        HandPaintConfig.currentLevel = level;
     }
 
 
