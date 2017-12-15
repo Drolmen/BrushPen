@@ -245,10 +245,6 @@ public class BrushElement {
         return mNodeArrays.get(mNodeArrays.size() - 1);
     }
 
-    public Brush getBrush() {
-        return mBrush;
-    }
-
     public static class Node {
         protected float x;
         protected float y;

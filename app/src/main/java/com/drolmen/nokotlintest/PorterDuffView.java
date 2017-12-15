@@ -111,7 +111,7 @@ public class PorterDuffView extends View {
             double curVel = curDis * BrushElement.DIS_VEL_CAL_FACTOR;
             double currentPercent;
             //点的集合少，我们得必须改变宽度,每次点击的down的时候，这个事件
-            if (getLastElement().size() < 2) {
+            if (element.size() < 2) {
                 currentPercent = BrushElement.calcNewPercent(curVel, lastNode.level, curDis, 1.5,
                         lastNode.percent);
                 newMoveNode.percent = (float) currentPercent;
@@ -243,10 +243,5 @@ public class PorterDuffView extends View {
         mActivePath.clear();
         mCacheCanvas.getCanvas().drawColor(Color.WHITE, PorterDuff.Mode.CLEAR);
         invalidate();
-    }
-
-
-    public BrushElement getLastElement() {
-        return mElementArrays.get(mElementArrays.size() - 1);
     }
 }
