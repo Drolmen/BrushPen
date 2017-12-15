@@ -23,7 +23,6 @@ import java.util.ArrayList;
 
 public class PorterDuffView extends View {
 
-    private ArrayList<Brush> mBrushList;
     private ArrayList<Brush> mLevelList ;
     private Brush mSingleBrush ;
 
@@ -55,15 +54,8 @@ public class PorterDuffView extends View {
 
 
     private void init() {
-        mBrushList = new ArrayList<>();
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = 8;
-        mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._0, options)));
-        mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._1, options)));
-        mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._2, options)));
-        mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._3, options)));
-        mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._4, options)));
-        mBrushList.add(new Brush(BitmapFactory.decodeResource(getResources(), R.mipmap._5, options)));
 
         options.inMutable = true;
         mLevelList = new ArrayList<>();
