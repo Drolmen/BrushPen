@@ -1,6 +1,10 @@
 package com.drolmen.nokotlintest;
 
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
 
 import java.util.ArrayList;
 
@@ -10,11 +14,17 @@ import java.util.ArrayList;
 
 public class BrushElement {
 
-    //这个控制笔锋的控制值
+    /**
+     * 这个控制笔锋的控制值
+     */
     static float DIS_VEL_CAL_FACTOR = 0.02f;
-    //手指在移动的控制笔的变化率  这个值越大，线条的粗细越加明显
+    /**
+     * 手指在移动的控制笔的变化率  这个值越大，线条的粗细越加明显
+     */
     static float WIDTH_THRES_MAX = 0.6f;
-    //绘制计算的次数，数值越小计算的次数越多，需要折中
+    /**
+     * 绘制计算的次数，数值越小计算的次数越多，需要折中
+     */
     static int STEPFACTOR = 10;
 
     /**
@@ -27,15 +37,23 @@ public class BrushElement {
      */
     private ArrayList<Node> mSmoothNodeArrays ;
 
-    private Bezier mBezierHelp ;    //用于绘制贝塞尔曲线，使线条平滑
+    /**
+     * 用于绘制贝塞尔曲线，使线条平滑
+     */
+    private Bezier mBezierHelp ;
 
-    private boolean needAlpha ;
+    /**
+     * 该线条是否打开了alpha绘制开关
+     */
+    private boolean mAlphaEnable;
 
-    public BrushElement(boolean needAlpha) {
+    private BrushElement.Node mLastNode;
+
+    public BrushElement() {
         mNodeArrays = new ArrayList<>();
         mSmoothNodeArrays = new ArrayList<>();
         mBezierHelp = new Bezier();
-        this.needAlpha = needAlpha;
+        this.mAlphaEnable = HandPaintConfig.enableBrushAlpha;
     }
 
     public void addNode(Node node, double curs) {
@@ -51,23 +69,7 @@ public class BrushElement {
         }
     }
 
-    public void addEndNode(Node node, double curs) {
-        mNodeArrays.add(node);
-        if (size() == 2) {
-            mBezierHelp.init(mNodeArrays.get(size() - 2), mNodeArrays.get(size() - 1));
-            return;
-        }
-        mBezierHelp.addNode(node);
-        if (curs != 0) {
-            moveNeetToDo(curs, mNodeArrays.get(size() - 2).mBrush);
-        }
-        mBezierHelp.end();
-        if (curs != 0) {
-            moveNeetToDo(curs, mNodeArrays.get(size() - 2).mBrush);
-        }
-    }
-
-    protected void moveNeetToDo(double curDis, PorterDuffView.Brush brush) {
+    protected void moveNeetToDo(double curDis, Brush brush) {
         int steps = 1 + (int) curDis / STEPFACTOR;
         double step = 1.0 / steps;
         for (double t = 0; t < 1.0; t += step) {
@@ -131,33 +133,6 @@ public class BrushElement {
         return mNodeArrays.size() ;
     }
 
-    public void drawLastNode(Canvas canvas) {
-        if (size() == 0) {
-            return;
-        }
-
-        Node lastNode = mNodeArrays.get(size() - 1);
-
-        if (size() == 1) {
-            lastNode.mBrush.move((int)lastNode.x, (int)lastNode.y, lastNode.percent);
-            lastNode.mBrush.drawSelf(canvas);
-            return;
-        }
-
-        Node secondLastNode = mNodeArrays.get(size() - 2);
-
-        if (size() == 2) {
-            Node tempNode = new Node();
-            tempNode.mBrush = secondLastNode.mBrush;
-            tempNode.level = secondLastNode.level;
-            tempNode.set(secondLastNode.x, secondLastNode.y, secondLastNode.percent);
-            drawLine(lastNode.mBrush, canvas, secondLastNode, lastNode);
-            return;
-        }
-
-        drawLine(lastNode.mBrush, canvas, secondLastNode, lastNode);
-    }
-
     public void drawNode(Canvas canvas) {
         if (mSmoothNodeArrays.size() == 0) {
             return;
@@ -179,7 +154,7 @@ public class BrushElement {
 
     }
 
-    protected void drawLine(PorterDuffView.Brush brush, Canvas canvas, Node fromNode,
+    protected void drawLine(Brush brush, Canvas canvas, Node fromNode,
                             Node endNode) {
         float x_distance = -(fromNode.x - endNode.x);
         float y_distance = -(fromNode.y - endNode.y);
@@ -213,9 +188,8 @@ public class BrushElement {
             //Paint newPaint = new Paint(paint);
             //当这里很小的时候，透明度就会很小，个人测试在3.0左右比较靠谱
             //第一个Rect 代表要绘制的bitmap 区域，第二个 Rect 代表的是要将bitmap 绘制在屏幕的什么地方
-            if (needAlpha) {
-                PorterDuffView.Brush.testPaint.setAlpha(a);
-                brush.drawSelf(canvas, PorterDuffView.Brush.testPaint);
+            if (mAlphaEnable) {
+                brush.drawSelf(canvas, a);
             } else {
                 brush.drawSelf(canvas);
             }
@@ -231,7 +205,7 @@ public class BrushElement {
     }
 
     public static class Node {
-        protected PorterDuffView.Brush mBrush ;
+        protected Brush mBrush ;
         protected float x;
         protected float y;
         protected int alpha = 255;
@@ -244,12 +218,6 @@ public class BrushElement {
         public void set(float x, float y) {
             this.x = x;
             this.y = y;
-        }
-
-        public Node(float x, float y, float percent) {
-            this.x = x;
-            this.y = y;
-            this.percent = percent;
         }
 
         public void set(float x, float y, float percent) {
@@ -283,6 +251,43 @@ public class BrushElement {
                     ", level=" + level +
                     ", percent=" + percent +
                     '}';
+        }
+    }
+
+    public static class Brush {
+        protected Bitmap mBrushBitmap ;    //笔尖
+        private Rect mDes ;     // 目标展示区域
+        private int width ;
+        private int height ;
+
+        public static final Paint testPaint = new Paint();
+
+        static {
+            testPaint.setColor(Color.BLACK);
+            testPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+        }
+
+        public Brush(Bitmap brushBitmap) {
+            mBrushBitmap = brushBitmap;
+            width = mBrushBitmap.getWidth() / 2;
+            height = mBrushBitmap.getHeight() / 2;
+            mDes = new Rect(0, 0, width, height);
+        }
+
+        public void move(int x, int y , float percent) {
+            int half_width = (int) (percent * width / 2);
+            int half_height = (int) (percent * height / 2);
+            mDes.set(x - half_width, y - half_height,
+                    x + half_width, y + half_height);
+        }
+
+        public void drawSelf(Canvas canvas, int alpha) {
+            testPaint.setAlpha(alpha);
+            canvas.drawBitmap(mBrushBitmap, null, mDes, testPaint);
+        }
+
+        public void drawSelf(Canvas canvas) {
+            canvas.drawBitmap(mBrushBitmap, null, mDes, null);
         }
     }
 }
