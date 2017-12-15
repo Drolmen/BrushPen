@@ -7,7 +7,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
@@ -32,7 +31,7 @@ public class PorterDuffView extends View {
 
     private Paint mPaint ;
 
-    private Node mLastNode;
+    private BrushElement.Node mLastNode;
 
     private ArrayList<BrushElement> mElementArrays ;
     
@@ -81,7 +80,7 @@ public class PorterDuffView extends View {
         mPaint = new Paint();
         mPaint.setAlpha(255);
 
-        mLastNode = new Node();
+        mLastNode = new BrushElement.Node();
     }
 
     @Override
@@ -123,7 +122,7 @@ public class PorterDuffView extends View {
         int x = (int) event.getX();
         int y = (int) event.getY();
 
-        Node currentNode = new Node();
+        BrushElement.Node currentNode = new BrushElement.Node();
         currentNode.mBrush = mSingleBrush;
         currentNode.set(x, y);
 
@@ -165,7 +164,7 @@ public class PorterDuffView extends View {
         //手指抬起一瞬间的速度
         double v = Math.hypot(mVelocityTracker.getXVelocity(), mVelocityTracker.getYVelocity());
         //由速度决定笔锋长度
-        Node endNode = new Node();
+        BrushElement.Node endNode = new BrushElement.Node();
         endNode.set(event.getX(), event.getY());
         endNode.percent = 0.1f;
 
@@ -302,62 +301,6 @@ public class PorterDuffView extends View {
         public void drawSelf(Canvas canvas, Paint paint) {
             canvas.drawBitmap(mBrushBitmap, null, mDes, paint);
 //            canvas.drawRect(mDes,testPaint);
-        }
-    }
-
-    public static class Node {
-        protected Brush mBrush ;
-        protected float x;
-        protected float y;
-        protected int alpha = 255;
-        protected double level ;  // TODO: 2017/12/12  drolmen add --- 这个属性的位置要考虑一下
-        protected float percent ; //宽百分比，使用该实行，要保证所有图片尺寸一致
-
-        public Node() {
-        }
-
-        public void set(float x, float y) {
-            this.x = x;
-            this.y = y;
-        }
-
-        public Node(float x, float y, float percent) {
-            this.x = x;
-            this.y = y;
-            this.percent = percent;
-        }
-
-        public void set(float x, float y, float percent) {
-            this.x = x;
-            this.y = y;
-            this.percent = percent;
-        }
-
-        public void set(float x, float y, float percent,double level) {
-            this.x = x;
-            this.y = y;
-            this.percent = percent;
-            this.level = level;
-        }
-
-        public void set(Node node) {
-            this.x = node.x;
-            this.y = node.y;
-            this.alpha = node.alpha;
-            this.level = node.level;
-            this.percent = node.percent;
-            this.mBrush = node.mBrush;
-        }
-
-        @Override
-        public String toString() {
-            return "Node{" +
-                    "x=" + x +
-                    ", y=" + y +
-                    ", alpha=" + alpha +
-                    ", level=" + level +
-                    ", percent=" + percent +
-                    '}';
         }
     }
 

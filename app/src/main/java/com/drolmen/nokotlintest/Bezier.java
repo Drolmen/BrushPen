@@ -7,13 +7,13 @@ package com.drolmen.nokotlintest;
  */
 public class Bezier {
     //控制点的，
-    private PorterDuffView.Node mControl = new PorterDuffView.Node();
+    private BrushElement.Node mControl = new BrushElement.Node();
     //距离
-    private PorterDuffView.Node mDestination = new PorterDuffView.Node();
+    private BrushElement.Node mDestination = new BrushElement.Node();
     //下一个需要控制点
-    private PorterDuffView.Node mNextControl = new PorterDuffView.Node();
+    private BrushElement.Node mNextControl = new BrushElement.Node();
     //资源的点
-    private PorterDuffView.Node mSource = new PorterDuffView.Node();
+    private BrushElement.Node mSource = new BrushElement.Node();
 
     public Bezier() {
     }
@@ -23,7 +23,7 @@ public class Bezier {
      * @param last 最后的点的信息
      * @param cur 当前点的信息,当前点的信息，当前点的是根据事件获得，同时这个当前点的宽度是经过计算的得出的
      */
-    public void init(PorterDuffView.Node last, PorterDuffView.Node cur)
+    public void init(BrushElement.Node last, BrushElement.Node cur)
     {
         init(last.x, last.y, last.percent, cur.x, cur.y, cur.percent);
     }
@@ -43,7 +43,7 @@ public class Bezier {
         mNextControl.set(x, y, width);
     }
 
-    public void addNode(PorterDuffView.Node cur){
+    public void addNode(BrushElement.Node cur){
         addNode(cur.x, cur.y, cur.percent);
     }
 
@@ -80,11 +80,11 @@ public class Bezier {
      * @param t 孔子
      * @return
      */
-    public PorterDuffView.Node getPoint(double t){
+    public BrushElement.Node getPoint(double t){
         float x = (float)getX(t);
         float y = (float)getY(t);
         float w = (float)getW(t);
-        PorterDuffView.Node point = new PorterDuffView.Node();
+        BrushElement.Node point = new BrushElement.Node();
         point.set(x,y,w);
         return point;
     }

@@ -1,7 +1,6 @@
 package com.drolmen.nokotlintest;
 
 import android.graphics.Canvas;
-import android.graphics.Point;
 
 import java.util.ArrayList;
 
@@ -21,12 +20,12 @@ public class BrushElement {
     /**
      * 需要绘制的原始的点
      */
-    private ArrayList<PorterDuffView.Node> mNodeArrays ;
+    private ArrayList<Node> mNodeArrays ;
 
     /**
      * 需要绘制的贝塞尔曲线对应的点
      */
-    private ArrayList<PorterDuffView.Node> mSmoothNodeArrays ;
+    private ArrayList<Node> mSmoothNodeArrays ;
 
     private Bezier mBezierHelp ;    //用于绘制贝塞尔曲线，使线条平滑
 
@@ -39,7 +38,7 @@ public class BrushElement {
         this.needAlpha = needAlpha;
     }
 
-    public void addNode(PorterDuffView.Node node, double curs) {
+    public void addNode(Node node, double curs) {
 
         mNodeArrays.add(node);
         if (size() == 2) {
@@ -52,7 +51,7 @@ public class BrushElement {
         }
     }
 
-    public void addEndNode(PorterDuffView.Node node, double curs) {
+    public void addEndNode(Node node, double curs) {
         mNodeArrays.add(node);
         if (size() == 2) {
             mBezierHelp.init(mNodeArrays.get(size() - 2), mNodeArrays.get(size() - 1));
@@ -72,14 +71,14 @@ public class BrushElement {
         int steps = 1 + (int) curDis / STEPFACTOR;
         double step = 1.0 / steps;
         for (double t = 0; t < 1.0; t += step) {
-            PorterDuffView.Node point = mBezierHelp.getPoint(t);
+            Node point = mBezierHelp.getPoint(t);
             getWithPointAlphaPoint(point);
             point.mBrush = brush;
             mSmoothNodeArrays.add(point);
         }
     }
 
-    private void getWithPointAlphaPoint(PorterDuffView.Node point) {
+    private void getWithPointAlphaPoint(Node point) {
         int alpha = (int) (255 * point.percent / 2);
         if (alpha < 10) {
             alpha = 10;
@@ -137,7 +136,7 @@ public class BrushElement {
             return;
         }
 
-        PorterDuffView.Node lastNode = mNodeArrays.get(size() - 1);
+        Node lastNode = mNodeArrays.get(size() - 1);
 
         if (size() == 1) {
             lastNode.mBrush.move((int)lastNode.x, (int)lastNode.y, lastNode.percent);
@@ -145,10 +144,10 @@ public class BrushElement {
             return;
         }
 
-        PorterDuffView.Node secondLastNode = mNodeArrays.get(size() - 2);
+        Node secondLastNode = mNodeArrays.get(size() - 2);
 
         if (size() == 2) {
-            PorterDuffView.Node tempNode = new PorterDuffView.Node();
+            Node tempNode = new Node();
             tempNode.mBrush = secondLastNode.mBrush;
             tempNode.level = secondLastNode.level;
             tempNode.set(secondLastNode.x, secondLastNode.y, secondLastNode.percent);
@@ -164,7 +163,7 @@ public class BrushElement {
             return;
         }
 
-        PorterDuffView.Node lastNode = mSmoothNodeArrays.get(0);
+        Node lastNode = mSmoothNodeArrays.get(0);
 
         if (size() == 1) {
             lastNode.mBrush.move((int)lastNode.x, (int)lastNode.y, lastNode.percent);
@@ -173,15 +172,15 @@ public class BrushElement {
         }
 
         for (int i = 1; i < mSmoothNodeArrays.size(); i++) {
-            PorterDuffView.Node point = mSmoothNodeArrays.get(i);
+            Node point = mSmoothNodeArrays.get(i);
             drawLine(lastNode.mBrush, canvas, lastNode, point);
             lastNode = point;
         }
 
     }
 
-    protected void drawLine(PorterDuffView.Brush brush, Canvas canvas, PorterDuffView.Node fromNode,
-                            PorterDuffView.Node endNode) {
+    protected void drawLine(PorterDuffView.Brush brush, Canvas canvas, Node fromNode,
+                            Node endNode) {
         float x_distance = -(fromNode.x - endNode.x);
         float y_distance = -(fromNode.y - endNode.y);
 
@@ -227,8 +226,63 @@ public class BrushElement {
         }
     }
 
-    public PorterDuffView.Node getLastNode() {
+    public Node getLastNode() {
         return mNodeArrays.get(mNodeArrays.size() - 1);
     }
 
+    public static class Node {
+        protected PorterDuffView.Brush mBrush ;
+        protected float x;
+        protected float y;
+        protected int alpha = 255;
+        protected double level ;  // TODO: 2017/12/12  drolmen add --- 这个属性的位置要考虑一下
+        protected float percent ; //宽百分比，使用该实行，要保证所有图片尺寸一致
+
+        public Node() {
+        }
+
+        public void set(float x, float y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        public Node(float x, float y, float percent) {
+            this.x = x;
+            this.y = y;
+            this.percent = percent;
+        }
+
+        public void set(float x, float y, float percent) {
+            this.x = x;
+            this.y = y;
+            this.percent = percent;
+        }
+
+        public void set(float x, float y, float percent,double level) {
+            this.x = x;
+            this.y = y;
+            this.percent = percent;
+            this.level = level;
+        }
+
+        public void set(Node node) {
+            this.x = node.x;
+            this.y = node.y;
+            this.alpha = node.alpha;
+            this.level = node.level;
+            this.percent = node.percent;
+            this.mBrush = node.mBrush;
+        }
+
+        @Override
+        public String toString() {
+            return "Node{" +
+                    "x=" + x +
+                    ", y=" + y +
+                    ", alpha=" + alpha +
+                    ", level=" + level +
+                    ", percent=" + percent +
+                    '}';
+        }
+    }
 }
