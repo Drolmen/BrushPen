@@ -46,8 +46,7 @@ public class PorterDuffView extends View {
 
     private void init() {
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = 8;
-
+        options.inSampleSize = 2;
         options.inMutable = true;
         mLevelList = new ArrayList<>();
         mLevelList.add(new BrushElement.Brush(BitmapFactory.decodeResource(getResources(),
@@ -155,7 +154,8 @@ public class PorterDuffView extends View {
         int pointerCount = event.getPointerCount();
         for (int i = 0; i < pointerCount; i++) {
 
-            BrushElement element = mActivePath.get(event.getPointerId(i));
+            int pointerId = event.getPointerId(i);
+            BrushElement element = mActivePath.get(pointerId);
             BrushElement.Node mLastNode = element.getLastNode();
 
             //由速度决定笔锋长度
@@ -172,7 +172,7 @@ public class PorterDuffView extends View {
             element.addNode(endNode, curDis);
             element.drawNode(mCacheCanvas.getCanvas());
 
-            mActivePath.remove(pointerCount);
+            mActivePath.remove(pointerId);
         }
         invalidate();
     }
@@ -267,6 +267,7 @@ public class PorterDuffView extends View {
 
     public void clear() {
         mElementArrays.clear();
+        mActivePath.clear();
         mCacheCanvas.getCanvas().drawColor(Color.WHITE, PorterDuff.Mode.CLEAR);
         invalidate();
     }
