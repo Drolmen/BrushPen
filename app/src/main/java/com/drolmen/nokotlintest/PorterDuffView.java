@@ -89,7 +89,7 @@ public class PorterDuffView extends View {
     private void onDown(MotionEvent event) {
         int pointerCount = event.getPointerCount();
         for (int i = 0; i < pointerCount; i++) {
-            BrushElement element = mActivePath.get(i);
+            BrushElement element = mActivePath.get(event.getPointerId(i));
             if (element != null) {
                 continue;
             }
@@ -100,6 +100,7 @@ public class PorterDuffView extends View {
             element.addNode(firstNode, 0);
 
             mElementArrays.add(element);
+            mActivePath.append(i, element);
         }
         invalidate();
     }
@@ -109,15 +110,15 @@ public class PorterDuffView extends View {
         int pointerCount = event.getPointerCount();
 
         for (int i = 0; i < pointerCount; i++) {
-            BrushElement element = mActivePath.get(pointerCount);
+            BrushElement element = mActivePath.get(event.getPointerId(i));
             BrushElement.Node lastNode = element.getLastNode();
 
             int x = (int) event.getX(i);
             int y = (int) event.getY(i);
 
-            BrushElement.Node newMovetNode = new BrushElement.Node();
-            newMovetNode.mBrush = mCurrentBrush;
-            newMovetNode.set(x, y);
+            BrushElement.Node newMoveNode = new BrushElement.Node();
+            newMoveNode.mBrush = mCurrentBrush;
+            newMoveNode.set(x, y);
 
             double deltaX = x - lastNode.x;
             double deltaY = y - lastNode.y;
@@ -132,17 +133,17 @@ public class PorterDuffView extends View {
             if (getLastElement().size() < 2) {
                 currentPercent = BrushElement.calcNewPercent(curVel, lastNode.level, curDis, 1.5,
                         lastNode.percent);
-                newMovetNode.percent = (float) currentPercent;
+                newMoveNode.percent = (float) currentPercent;
             } else {
                 //由于我们手机是触屏的手机，滑动的速度也不慢，所以，一般会走到这里来
                 //阐明一点，当滑动的速度很快的时候，这个值就越小，越慢就越大，依靠着mlastWidth不断的变换
                 currentPercent = BrushElement.calcNewPercent(curVel, lastNode.level, curDis, 1.5,
                         lastNode.percent);
-                newMovetNode.level = curVel;
-                newMovetNode.percent = (float) currentPercent;
+                newMoveNode.level = curVel;
+                newMoveNode.percent = (float) currentPercent;
             }
             //每次移动的话，这里赋值新的值
-            element.addNode(newMovetNode, curDis);
+            element.addNode(newMoveNode, curDis);
             element.drawNode(mCacheCanvas.getCanvas());
         }
 
@@ -154,7 +155,7 @@ public class PorterDuffView extends View {
         int pointerCount = event.getPointerCount();
         for (int i = 0; i < pointerCount; i++) {
 
-            BrushElement element = mActivePath.get(pointerCount);
+            BrushElement element = mActivePath.get(event.getPointerId(i));
             BrushElement.Node mLastNode = element.getLastNode();
 
             //由速度决定笔锋长度
@@ -170,6 +171,8 @@ public class PorterDuffView extends View {
 
             element.addNode(endNode, curDis);
             element.drawNode(mCacheCanvas.getCanvas());
+
+            mActivePath.remove(pointerCount);
         }
         invalidate();
     }
